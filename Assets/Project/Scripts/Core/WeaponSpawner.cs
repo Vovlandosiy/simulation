@@ -1,0 +1,56 @@
+using UnityEngine;
+
+public class WeaponSpawner : MonoBehaviour
+{
+    [Header("Префаб оружия для спавна")]
+    public GameObject weaponPrefab;
+
+    [Header("Настройки времени")]
+    public float spawnInterval = 5f; // Каждые 5 секунд спавнить пушку
+
+    [Header("Зона спавна")]
+    public Vector2 spawnAreaSize = new Vector2(4f, 6f); // Размеры прямоугольника внутри арены
+
+    private float timer;
+
+    void Start()
+    {
+        timer = spawnInterval;
+    }
+
+    void Update()
+    {
+        timer -= Time.deltaTime;
+        if (timer <= 0f)
+        {
+            SpawnWeapon();
+            timer = spawnInterval; // Сброс таймера
+        }
+    }
+
+    private void SpawnWeapon()
+    {
+        if (weaponPrefab == null) return;
+
+        // Генерируем случайную точку внутри зоны спавнера
+        float randomX = Random.Range(-spawnAreaSize.x / 2f, spawnAreaSize.x / 2f);
+        float randomY = Random.Range(-spawnAreaSize.y / 2f, spawnAreaSize.y / 2f);
+        Vector3 spawnPosition = transform.position + new Vector3(randomX, randomY, 0f);
+
+        // Спавним пушку на арене
+        Instantiate(weaponPrefab, spawnPosition, Quaternion.identity);
+    }
+
+    // Визуальные границы спавнера в окне Scene
+    private void OnDrawGizmos()
+{
+    // Рисуем заполненный полупрозрачный желтый прямоугольник
+    Gizmos.color = new Color(1f, 0.92f, 0.016f, 0.15f); // Желтый с альфа-каналом 15%
+    Gizmos.DrawCube(transform.position, new Vector3(spawnAreaSize.x, spawnAreaSize.y, 0f));
+
+    // Рисуем его плотные границы (контур)
+    Gizmos.color = Color.yellow;
+    Gizmos.DrawWireCube(transform.position, new Vector3(spawnAreaSize.x, spawnAreaSize.y, 0f));
+}
+
+}
