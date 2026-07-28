@@ -1,34 +1,39 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class Bullet : MonoBehaviour
 {
     private int damage;
     private int ownerTeam;
-    private Vector2 direction;
-    private float speed;
+    private Rigidbody2D rb;
 
-    public void Setup(Vector2 dir, float bulletSpeed, int dmg, int team)
+    void Awake()
     {
-        direction = dir.normalized;
-        speed = bulletSpeed;
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    public void Setup(Vector2 direction, float bulletSpeed, int dmg, int team)
+    {
         damage = dmg;
         ownerTeam = team;
 
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        Vector2 normalizedDir = direction.normalized;
+
+        // Поворачиваем пулю по направлению полета
+        float angle = Mathf.Atan2(normalizedDir.y, normalizedDir.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0, 0, angle);
 
-        Destroy(gameObject, 3f);
-    }
+        // Задаем физическую скорость напрямую (оптимально для Unity 6)
+        rb.linearVelocity = normalizedDir * bulletSpeed;
 
-    void FixedUpdate()
-    {
-        transform.Translate(Vector2.right * speed * Time.fixedDeltaTime);
+        // Время жизни пули, чтобы не засорять сцену
+        Destroy(gameObject, 3f);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        Pawn pawn = other.GetComponent<Pawn>();
-        if (pawn != null)
+        // Проверяем, попали ли в Юнита
+        if (other.TryGetComponent<Unit>(out Unit pawn))
         {
             if (pawn.team != ownerTeam)
             {
@@ -36,10 +41,10 @@ public class Bullet : MonoBehaviour
                 Destroy(gameObject);
             }
         }
+        // Если врезались в стену арены (не триггер)
         else if (!other.isTrigger) 
         {
             Destroy(gameObject);
         }
     }
 }
-

@@ -16,7 +16,7 @@ MonoBehaviour:
   maxHealth: 5
   health: 5
   movementSpeed: 2
-  damage: 3
+  damage: 1
   attackRange: 3
   attackCooldown: 3
   unitSprite: {fileID: 0}

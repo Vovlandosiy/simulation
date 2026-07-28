@@ -1,0 +1,236 @@
+using UnityEngine;
+
+public class Unit : MonoBehaviour
+{
+    [Header("Настройки оружия и пуль")] 
+    [SerializeField] private Transform weaponPivot;        
+    [SerializeField] private SpriteRenderer weaponVisual;
+
+
+    private bool hasWeapon = false;
+    private float aimTimer = 0f;
+    private float recoilTimer = 0f;
+    private bool isRecoiling = false;
+
+    public UnitData unitData;  
+    public int team = 1;
+
+    private int currentHealth;
+    private float speed;
+    private Rigidbody2D rb;
+    private Vector2 moveDirection;
+
+    // Слот для текущего оружия
+    private WeaponData currentWeapon;
+    private int currentAmmo;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    void Start()
+    {
+        if (unitData != null)
+        {
+            currentHealth = unitData.health;
+            speed = unitData.movementSpeed;
+        }
+        
+        // Скрываем визуал оружия на старте
+        if (weaponVisual != null) weaponVisual.gameObject.SetActive(false);
+        
+        LaunchInRandomDirection();
+    }
+
+    void Update()
+    {
+        if (hasWeapon && currentWeapon != null)
+        {
+            Unit target = FindClosestEnemy();
+            
+            if (target != null)
+            {
+                // Поворачиваем локальную ось оружия в сторону врага
+                Vector3 targetDir = target.transform.position - weaponPivot.position;
+                float angle = Mathf.Atan2(targetDir.y, targetDir.x) * Mathf.Rad2Deg;
+                weaponPivot.rotation = Quaternion.Euler(0, 0, angle);
+
+                // Флипаем спрайт, чтобы пистолет не становился «вверх ногами» при взгляде влево
+                if (weaponVisual != null)
+                {
+                    weaponVisual.flipY = Mathf.Abs(angle) > 90f;
+                }
+
+                // Считаем время до выстрела
+                aimTimer -= Time.deltaTime;
+                if (aimTimer <= 0f)
+                {
+                    float distance = Vector2.Distance(transform.position, target.transform.position);
+                    
+                    // Стреляем, только если цель в зоне досягаемости оружия
+                    if (distance <= currentWeapon.fireRange)
+                    {
+                        ExecutePhysicalShot(targetDir.normalized);
+                    }
+                    else
+                    {
+                        aimTimer = 0.1f; // Быстрое ожидание, если враг временно отлетел
+                    }
+                }
+            }
+        }
+    }
+
+    void FixedUpdate()
+    {
+        if (isRecoiling)
+        {
+            recoilTimer -= Time.fixedDeltaTime;
+            if (recoilTimer <= 0f)
+            {
+                isRecoiling = false;
+                LaunchInRandomDirection(); // После отдачи летим в случайную сторону
+            }
+            return; 
+        }
+
+        rb.linearVelocity = moveDirection * speed;
+    }
+
+
+    private void LaunchInRandomDirection()
+    {
+        float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        moveDirection = new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle)).normalized;
+    }
+
+    // Метод подбора оружия. Вызывается из скрипта DroppedWeapon
+    public bool TryEquipWeapon(WeaponData newWeapon)
+    {
+        if (hasWeapon || newWeapon == null) return false;
+
+        currentWeapon = newWeapon;
+        currentAmmo = newWeapon.ammo;
+        hasWeapon = true;
+
+        // Включаем пушку и подставляем ее спрайт
+        if (weaponVisual != null)
+        {
+            weaponVisual.sprite = currentWeapon.weaponSprite;
+            weaponVisual.gameObject.SetActive(true);
+        }
+
+        // Включаем таймер прицеливания, взятый из настроек оружия
+        aimTimer = currentWeapon.aimDuration;
+        
+        Debug.Log($"{gameObject.name} подобрал {newWeapon.weaponName} и целится на ходу!");
+        return true;
+    }
+
+    private void ExecutePhysicalShot(Vector2 shootDirection)
+    {
+        // Проверяем, есть ли оружие и назначен ли у него префаб пули
+        if (currentWeapon == null || currentWeapon.bulletPrefab == null) return;
+
+        // Динамически вычисляем точку вылета снаряда (сдвигаем вперед по направлению ствола)
+        // Для РПГ пуля вылетит чуть дальше вперед, для пистолета — ближе
+        float weaponLengthOffset = 0.5f; // Базовое смещение вперед от центра пивота
+        Vector3 spawnPos = weaponPivot.position + (Vector3)shootDirection * weaponLengthOffset;
+
+        // Спавним уникальный префаб пули, привязанный к конкретному оружию (Обычная пуля или Ракета РПГ)
+        GameObject bulletObj = Instantiate(currentWeapon.bulletPrefab, spawnPos, Quaternion.identity);
+        
+        if (bulletObj.TryGetComponent<Bullet>(out Bullet bullet))
+        {
+            bullet.Setup(shootDirection, currentWeapon.bulletSpeed, currentWeapon.damage, this.team);
+        }
+
+        currentAmmo--;
+        Debug.Log($"{gameObject.name} выстрелил из {currentWeapon.weaponName}! Патронов осталось: {currentAmmo}");
+
+        // Отдача толкает назад (для РПГ можно в будущем сделать отдачу сильнее, умножив на коэффициент)
+        //isRecoiling = true;
+        //recoilTimer = 0.2f; 
+        //rb.linearVelocity = -shootDirection * (speed * 2f);
+
+        if (currentAmmo > 0)
+        {
+            aimTimer = currentWeapon.aimDuration;
+        }
+        else
+        {
+            RemoveWeapon();
+        }
+    }
+
+
+
+    private Unit FindClosestEnemy()
+    {
+        Unit[] allUnits = FindObjectsByType<Unit>(FindObjectsSortMode.None);
+        Unit closest = null;
+        float minDistance = Mathf.Infinity;
+
+        foreach (Unit p in allUnits)
+        {
+            if (p == this || p.team == this.team) continue;
+
+            float dist = Vector2.Distance(transform.position, p.transform.position); //ПРОВЕРИТЬ 
+            if (dist < minDistance)
+            {
+                minDistance = dist;
+                closest = p;
+            }
+        }
+        return closest;
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (!isRecoiling)
+        {
+            Vector2 normal = collision.contacts[0].normal;
+            Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
+
+            float randomAngle = Random.Range(-10f, 10f);
+            Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
+            
+            moveDirection = (rotation * reflectDirection).normalized;
+        }
+
+        // Урон в ближнем бою при столкновении
+        if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
+        {
+            if (otherPawn.team != this.team)
+            {
+                otherPawn.TakeDamage(unitData.damage);
+                Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
+            }
+        }
+    }
+
+
+        private void RemoveWeapon()
+    {
+        hasWeapon = false;
+        currentWeapon = null;
+        if (weaponVisual != null)
+        {
+            weaponVisual.gameObject.SetActive(false);
+            weaponVisual.sprite = null;
+        }
+    }
+
+
+    public void TakeDamage(int damageAmount)
+    {
+        currentHealth -= damageAmount;
+        if (currentHealth <= 0) Die();
+    }
+
+    private void Die()
+    {
+        Destroy(gameObject);
+    }
+}

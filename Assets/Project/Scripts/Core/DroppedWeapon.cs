@@ -21,11 +21,11 @@ public class DroppedWeapon : MonoBehaviour
     // Обработка подбора через триггер
     private void OnTriggerEnter2D(Collider2D other)
     {
-        Pawn pawn = other.GetComponent<Pawn>();
-        if (pawn != null)
+        Unit unit = other.GetComponent<Unit>();
+        if (unit != null)
         {
             // Пытаемся дать оружие юниту
-            if (pawn.TryEquipWeapon(weaponData))
+            if (unit.TryEquipWeapon(weaponData))
             {
                 // Если юнит успешно подобрал, удаляем пушку с земли
                 Destroy(gameObject);
