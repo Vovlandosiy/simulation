@@ -11,5 +11,4 @@ public class UnitData : ScriptableObject
     public float attackRange = 1f;
     public float attackCooldown = 1f;
     public Sprite unitSprite;
-    public Color teamColor = Color.red;
 }

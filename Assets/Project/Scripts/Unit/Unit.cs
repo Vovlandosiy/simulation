@@ -211,7 +211,7 @@ public class Unit : MonoBehaviour
     }
 
 
-        private void RemoveWeapon()
+    private void RemoveWeapon()
     {
         hasWeapon = false;
         currentWeapon = null;
@@ -230,7 +230,9 @@ public class Unit : MonoBehaviour
     }
 
     private void Die()
-    {
-        Destroy(gameObject);
-    }
+        {Destroy(gameObject);}
+        
+        
+    public int GetCurrentHealth()
+        {return currentHealth;}
 }

@@ -169,9 +169,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 430c7579831cc81419252d966529ca7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pawn
-  bulletPrefab: {fileID: 534214276262026621, guid: 0e72aec234eedd54b836d2489d435158, type: 3}
-  weaponPivot: {fileID: 0}
-  weaponVisual: {fileID: 0}
+  weaponPivot: {fileID: 2602237409658877203}
+  weaponVisual: {fileID: 3563186994184997917}
   unitData: {fileID: 11400000, guid: 605166257e5f49942b75e442da774753, type: 2}
   team: 1
 --- !u!1 &2649036493585617552
