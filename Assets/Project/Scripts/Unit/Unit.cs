@@ -193,7 +193,7 @@ public class Unit : MonoBehaviour
             Vector2 normal = collision.contacts[0].normal;
             Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
 
-            float randomAngle = Random.Range(-10f, 10f);
+            float randomAngle = Random.Range(-0f, 0f);
             Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
             
             moveDirection = (rotation * reflectDirection).normalized;

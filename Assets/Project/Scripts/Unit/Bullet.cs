@@ -3,6 +3,8 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class Bullet : MonoBehaviour
 {
+    [Header("Настройки взрыва (Только для Ракет)")]
+    [SerializeField] private GameObject explosionPrefab;
     private int damage;
     private int ownerTeam;
     private Rigidbody2D rb;
@@ -38,13 +40,25 @@ public class Bullet : MonoBehaviour
             if (pawn.team != ownerTeam)
             {
                 pawn.TakeDamage(damage);
-                Destroy(gameObject);
+                ExecuteDestruction();
             }
         }
         // Если врезались в стену арены (не триггер)
         else if (!other.isTrigger) 
         {
-            Destroy(gameObject);
+            ExecuteDestruction();
         }
     }
+
+// НОВЫЙ ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ СПАВНА ВЗРЫВА:
+private void ExecuteDestruction()
+{
+    // Если префаб взрыва задан — спавним его в точке удара
+    if (explosionPrefab != null)
+    {
+        Instantiate(explosionPrefab, transform.position, Quaternion.identity);
+    }
+    
+    Destroy(gameObject);
+}
 }
