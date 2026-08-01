@@ -2,17 +2,20 @@ using UnityEngine;
 
 public class WeaponSpawner : MonoBehaviour
 {
-    [Header("Префаб оружия для спавна")]
+    [Header("Weapon Prefab")]
     public GameObject weaponPrefab;
 
-    [Header("Настройки времени")]
-    public float spawnInterval = 5f; // Каждые 5 секунд спавнить пушку
+    [Header("Weapon Data")]
+    public WeaponData weaponData; 
 
-    [Header("Настройки лимита")]
-    [SerializeField] private int maxWeaponsCount = 2; // Максимальное количество пушек на сцене
+    [Header("Spawn Interval")]
+    public float spawnInterval = 5f;
 
-    [Header("Зона спавна")]
-    public Vector2 spawnAreaSize = new Vector2(4f, 6f); // Размеры прямоугольника внутри арены
+    [Header("Max Weapon Count")]
+    [SerializeField] private int maxWeaponsCount = 2; 
+
+    [Header("Spawn Area Size")]
+    public Vector2 spawnAreaSize = new Vector2(4f, 6f); 
 
     private float timer;
 
@@ -26,7 +29,6 @@ public class WeaponSpawner : MonoBehaviour
         timer -= Time.deltaTime;
         if (timer <= 0f)
         {
-            // Проверяем, можно ли спавнить
             if (CanSpawn())
             {
                 SpawnWeapon();
@@ -38,45 +40,38 @@ public class WeaponSpawner : MonoBehaviour
 
     private bool CanSpawn()
     {
-        if (weaponPrefab == null) return false;
+        if (weaponPrefab == null || weaponData == null) return false;
 
-        // Получаем WeaponData, которое должен спавнить ЭТОТ конкретный спавнер
-        if (!weaponPrefab.TryGetComponent<DroppedWeapon>(out var prefabWeaponScript) || prefabWeaponScript.weaponData == null)
-        {
-            return false;
-        }
-        
-        WeaponData targetData = prefabWeaponScript.weaponData;
-
-        // Находим вообще все лежащие пушки на арене
         DroppedWeapon[] allWeaponsOnGround = FindObjectsByType<DroppedWeapon>(FindObjectsSortMode.None);
         
         int sameTypeCount = 0;
 
-        // Считаем только те пушки, у которых совпадает ScriptableObject данные
+        // 3. Исправленный цикл: считаем пушки с таким же ScriptableObject
         for (int i = 0; i < allWeaponsOnGround.Length; i++)
         {
-            if (allWeaponsOnGround[i].weaponData == targetData)
+            if (allWeaponsOnGround[i].weaponData == weaponData)
             {
                 sameTypeCount++;
             }
         }
-
-        // Если пушек именно ЭТОГО типа уже слишком много — спавн отменяется
         return sameTypeCount < maxWeaponsCount;
     }
 
+private void SpawnWeapon()
+{
+    float randomX = Random.Range(-spawnAreaSize.x / 2f, spawnAreaSize.x / 2f);
+    float randomY = Random.Range(-spawnAreaSize.y / 2f, spawnAreaSize.y / 2f);
+    
+    // ИЗМЕНЕНО: Явно берем transform.position.z спавнера, чтобы пушка не спавнилась в глубине сцены
+    Vector3 spawnPosition = new Vector3(transform.position.x + randomX, transform.position.y + randomY, transform.position.z);
 
-    private void SpawnWeapon()
+    GameObject spawnedObject = Instantiate(weaponPrefab, spawnPosition, Quaternion.identity);
+    if (spawnedObject.TryGetComponent<DroppedWeapon>(out var droppedWeapon))
     {
-        // Генерируем случайную точку внутри зоны спавнера
-        float randomX = Random.Range(-spawnAreaSize.x / 2f, spawnAreaSize.x / 2f);
-        float randomY = Random.Range(-spawnAreaSize.y / 2f, spawnAreaSize.y / 2f);
-        Vector3 spawnPosition = transform.position + new Vector3(randomX, randomY, 0f);
-
-        // Спавним пушку на арене
-        Instantiate(weaponPrefab, spawnPosition, Quaternion.identity);
+        // Сначала передаем данные, только потом пушка будет готова к подбору
+        droppedWeapon.Initialize(weaponData);
     }
+}
 
     // Визуальные границы спавнера в окне Scene
     private void OnDrawGizmos()

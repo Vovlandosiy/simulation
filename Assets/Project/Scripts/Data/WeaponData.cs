@@ -10,7 +10,5 @@ public class WeaponData : ScriptableObject
     public float bulletSpeed = 12f; 
     public float aimDuration = 0.8f; 
     public Sprite weaponSprite;
-    
-    [Header("Префаб снаряда для этого оружия")]
-    public GameObject bulletPrefab; // Сюда для Пистолета перетащите Bullet, а для РПГ — префаб Ракеты
+    public GameObject bulletPrefab;
 }

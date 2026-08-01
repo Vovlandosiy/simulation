@@ -2,38 +2,49 @@ using UnityEngine;
 
 public class DroppedWeapon : MonoBehaviour
 {
-    public WeaponData weaponData;
+    [HideInInspector] public WeaponData weaponData; 
+    
     private SpriteRenderer spriteRenderer;
 
-    [Header("Настройки пульсации (Juice)")]
-    [SerializeField] private float pulseSpeed = 3f;      // Скорость изменения размера
-    [SerializeField] private float pulseAmount = 0.15f;  // На сколько процентов увеличивать/уменьшать (0.15 = 15%)
+    [Header("Juice")]
+    [SerializeField] private float pulseSpeed = 3f;      
+    [SerializeField] private float pulseAmount = 0.15f;  
 
-    private Vector3 baseScale; // Базовый размер пушки, взятый из инспектора
+    private Vector3 baseScale; 
+    private bool isInitialized = false;
 
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        baseScale = transform.localScale; // Запоминаем исходный размер
+        baseScale = transform.localScale; 
     }
 
-    void Start()
+    public void Initialize(WeaponData data)
     {
+        weaponData = data;
+
         if (weaponData != null && weaponData.weaponSprite != null)
         {
             spriteRenderer.sprite = weaponData.weaponSprite;
+
+            transform.localPosition = new Vector3(transform.localPosition.x, transform.localPosition.y, 0f);
         }
+
+         isInitialized = true;
     }
 
     void Update()
     {
-        // Плавная пульсация масштаба на основе синусоиды времени
+        if (!isInitialized) return;
+
         float scaleFactor = 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseAmount;
         transform.localScale = baseScale * scaleFactor;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (!isInitialized || weaponData == null) return; 
+
         Unit unit = other.GetComponent<Unit>();
         if (unit != null)
         {
