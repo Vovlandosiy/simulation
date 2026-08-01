@@ -53,8 +53,12 @@ public class HealthUIManager : MonoBehaviour
         public List<Image> heartImages = new List<Image>();
     }
 
+    public static HealthUIManager Instance { get; private set; }
+
     void Awake()
     {
+        if (Instance == null) Instance = this;
+
         managerRectTransform = GetComponent<RectTransform>();
         managerLayoutGroup = GetComponent<VerticalLayoutGroup>();
     }
@@ -103,6 +107,12 @@ public class HealthUIManager : MonoBehaviour
         {
             ReturnRowToPool(unitsToRemove[i]);
         }
+    }
+
+    public Color GetTeamColorPublic(int teamNumber)
+    {
+        if (teamNumber >= 0 && teamNumber < teamColors.Length) return teamColors[teamNumber];
+        return Color.white;
     }
 
     private Color GetColorForTeam(int teamNumber)

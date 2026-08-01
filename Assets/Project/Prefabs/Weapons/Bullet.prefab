@@ -178,3 +178,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 242f45d9dfe70da40bb87d042aa30431, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bullet
+  hitParticlePrefab: {fileID: 8654655504333729481, guid: ba7bf7f4e10ac654b8e7b3f6263ee376, type: 3}
+  explosionPrefab: {fileID: 0}

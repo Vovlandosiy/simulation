@@ -2,10 +2,9 @@ using UnityEngine;
 
 public class Unit : MonoBehaviour
 {
-    [Header("Настройки оружия и пуль")] 
+    [Header("Weapon Settings")] 
     [SerializeField] private Transform weaponPivot;        
     [SerializeField] private SpriteRenderer weaponVisual;
-
 
     private bool hasWeapon = false;
     private float aimTimer = 0f;
@@ -20,7 +19,6 @@ public class Unit : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 moveDirection;
 
-    // Слот для текущего оружия
     private WeaponData currentWeapon;
     private int currentAmmo;
 
@@ -67,16 +65,11 @@ public class Unit : MonoBehaviour
                 if (aimTimer <= 0f)
                 {
                     float distance = Vector2.Distance(transform.position, target.transform.position);
-                    
-                    // Стреляем, только если цель в зоне досягаемости оружия
+
                     if (distance <= currentWeapon.fireRange)
-                    {
                         ExecutePhysicalShot(targetDir.normalized);
-                    }
                     else
-                    {
-                        aimTimer = 0.1f; // Быстрое ожидание, если враг временно отлетел
-                    }
+                        aimTimer = 0.1f;
                 }
             }
         }
@@ -90,7 +83,7 @@ public class Unit : MonoBehaviour
             if (recoilTimer <= 0f)
             {
                 isRecoiling = false;
-                LaunchInRandomDirection(); // После отдачи летим в случайную сторону
+                //LaunchInRandomDirection(); // После отдачи летим в случайную сторону
             }
             return; 
         }
@@ -105,7 +98,6 @@ public class Unit : MonoBehaviour
         moveDirection = new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle)).normalized;
     }
 
-    // Метод подбора оружия. Вызывается из скрипта DroppedWeapon
     public bool TryEquipWeapon(WeaponData newWeapon)
     {
         if (hasWeapon || newWeapon == null) return false;
@@ -114,14 +106,12 @@ public class Unit : MonoBehaviour
         currentAmmo = newWeapon.ammo;
         hasWeapon = true;
 
-        // Включаем пушку и подставляем ее спрайт
         if (weaponVisual != null)
         {
             weaponVisual.sprite = currentWeapon.weaponSprite;
             weaponVisual.gameObject.SetActive(true);
         }
 
-        // Включаем таймер прицеливания, взятый из настроек оружия
         aimTimer = currentWeapon.aimDuration;
         
         Debug.Log($"{gameObject.name} подобрал {newWeapon.weaponName} и целится на ходу!");
@@ -130,16 +120,15 @@ public class Unit : MonoBehaviour
 
     private void ExecutePhysicalShot(Vector2 shootDirection)
     {
-        // Проверяем, есть ли оружие и назначен ли у него префаб пули
         if (currentWeapon == null || currentWeapon.bulletPrefab == null) return;
 
-        // Динамически вычисляем точку вылета снаряда (сдвигаем вперед по направлению ствола)
-        // Для РПГ пуля вылетит чуть дальше вперед, для пистолета — ближе
+        // Динамически вычисляем точку вылета снаряда
         float weaponLengthOffset = 0.5f; // Базовое смещение вперед от центра пивота
         Vector3 spawnPos = weaponPivot.position + (Vector3)shootDirection * weaponLengthOffset;
 
-        // Спавним уникальный префаб пули, привязанный к конкретному оружию (Обычная пуля или Ракета РПГ)
         GameObject bulletObj = Instantiate(currentWeapon.bulletPrefab, spawnPos, Quaternion.identity);
+
+        if (CameraJuiceManager.Instance != null) CameraJuiceManager.Instance.ShakeOnShot();
         
         if (bulletObj.TryGetComponent<Bullet>(out Bullet bullet))
         {
@@ -186,29 +175,36 @@ public class Unit : MonoBehaviour
         return closest;
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
+private void OnCollisionEnter2D(Collision2D collision)
+{
+    if (isRecoiling) return;
+
+    Vector2 normal = collision.contacts[0].normal;
+    Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
+
+    float randomAngle = Random.Range(-0f, 0f);
+    Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
+    
+    moveDirection = (rotation * reflectDirection).normalized;
+
+    float pushOffset = 0.05f; 
+    rb.position += moveDirection * pushOffset;
+
+    // Если это стена, сразу же принудительно обновляем скорость в Rigidbody,
+    // не дожидаясь следующего кадра FixedUpdate
+    rb.linearVelocity = moveDirection * speed;
+    // ------------------------------------
+
+    if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
     {
-        if (!isRecoiling)
+        if (otherPawn.team != this.team)
         {
-            Vector2 normal = collision.contacts[0].normal;
-            Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
-
-            float randomAngle = Random.Range(-0f, 0f);
-            Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
-            
-            moveDirection = (rotation * reflectDirection).normalized;
-        }
-
-        // Урон в ближнем бою при столкновении
-        if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
-        {
-            if (otherPawn.team != this.team)
-            {
-                otherPawn.TakeDamage(unitData.damage);
-                Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
-            }
+            otherPawn.TakeDamage(unitData.damage);
+            Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
         }
     }
+}
+
 
 
     private void RemoveWeapon()
