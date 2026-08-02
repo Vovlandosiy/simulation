@@ -16,7 +16,7 @@ MonoBehaviour:
   ammo: 1
   damage: 5
   fireRange: 20
-  bulletSpeed: 20
+  bulletSpeed: 25
   aimDuration: 1.5
   weaponSprite: {fileID: 21300000, guid: 814ca99658ac6f648b1c5c29d31d8119, type: 3}
   bulletPrefab: {fileID: 534214276262026621, guid: 0e72aec234eedd54b836d2489d435158, type: 3}

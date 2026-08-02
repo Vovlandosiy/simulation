@@ -6,6 +6,12 @@ public class Unit : MonoBehaviour
     [SerializeField] private Transform weaponPivot;        
     [SerializeField] private SpriteRenderer weaponVisual;
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource _hitWall;
+    [SerializeField] private AudioSource _pickup;
+    [SerializeField] private AudioSource _punchUnit;
+    [SerializeField] private AudioSource _hitUnit;
+
     private bool hasWeapon = false;
     private float aimTimer = 0f;
     private float recoilTimer = 0f;
@@ -113,6 +119,9 @@ public class Unit : MonoBehaviour
         }
 
         aimTimer = currentWeapon.aimDuration;
+
+        _pickup.pitch = Random.Range(0.8f, 1.2f);
+        if (_pickup != null) _pickup.Play();
         
         Debug.Log($"{gameObject.name} подобрал {newWeapon.weaponName} и целится на ходу!");
         return true;
@@ -175,35 +184,47 @@ public class Unit : MonoBehaviour
         return closest;
     }
 
-private void OnCollisionEnter2D(Collision2D collision)
-{
-    if (isRecoiling) return;
-
-    Vector2 normal = collision.contacts[0].normal;
-    Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
-
-    float randomAngle = Random.Range(-0f, 0f);
-    Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
-    
-    moveDirection = (rotation * reflectDirection).normalized;
-
-    float pushOffset = 0.05f; 
-    rb.position += moveDirection * pushOffset;
-
-    // Если это стена, сразу же принудительно обновляем скорость в Rigidbody,
-    // не дожидаясь следующего кадра FixedUpdate
-    rb.linearVelocity = moveDirection * speed;
-    // ------------------------------------
-
-    if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (otherPawn.team != this.team)
+        if (isRecoiling) return;
+
+        Vector2 normal = collision.contacts[0].normal;
+        Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
+
+        float randomAngle = Random.Range(-0f, 0f);
+        Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
+        
+        moveDirection = (rotation * reflectDirection).normalized;
+
+        float pushOffset = 0.05f; 
+        rb.position += moveDirection * pushOffset;
+
+        // Если это стена, сразу же принудительно обновляем скорость в Rigidbody,
+        // не дожидаясь следующего кадра FixedUpdate
+        rb.linearVelocity = moveDirection * speed;
+        // ------------------------------------
+
+        if (collision.gameObject.CompareTag("walls"))
         {
-            otherPawn.TakeDamage(unitData.damage);
-            Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
+            _hitWall.pitch = Random.Range(0.8f, 1.2f);
+            if (_hitWall != null) _hitWall.PlayOneShot(_hitWall.clip);
+        }
+
+        if (collision.gameObject.CompareTag("unit"))
+        {
+            _punchUnit.pitch = Random.Range(0.8f, 1.2f);
+            if (_punchUnit != null) _punchUnit.PlayOneShot(_punchUnit.clip);
+        }
+
+        if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
+        {
+            if (otherPawn.team != this.team)
+            {
+                //otherPawn.TakeDamage(unitData.damage);
+                Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
+            }
         }
     }
-}
 
 
 
@@ -221,6 +242,12 @@ private void OnCollisionEnter2D(Collision2D collision)
 
     public void TakeDamage(int damageAmount)
     {
+        if (_hitUnit != null)
+        {
+            _hitUnit.pitch = Random.Range(0.8f, 1.2f);
+            _hitUnit.PlayOneShot(_hitUnit.clip);
+        }
+
         currentHealth -= damageAmount;
         if (currentHealth <= 0) Die();
     }

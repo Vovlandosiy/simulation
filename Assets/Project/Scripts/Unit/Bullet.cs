@@ -4,6 +4,7 @@ using UnityEngine;
 public class Bullet : MonoBehaviour
 {
     [SerializeField] private GameObject hitParticlePrefab;
+    [SerializeField] private AudioSource _shot;
 
     [Header("Настройки взрыва (Только для Ракет)")]
     [SerializeField] private GameObject explosionPrefab;
@@ -14,6 +15,14 @@ public class Bullet : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        
+        if (_shot != null)
+        {
+            _shot.pitch = Random.Range(0.8f, 1.2f);
+            _shot.PlayOneShot(_shot.clip);
+            _shot.transform.SetParent(null);
+            Destroy(_shot.gameObject, _shot.clip.length);
+        }
     }
 
     public void Setup(Vector2 direction, float bulletSpeed, int dmg, int team)
@@ -42,6 +51,8 @@ public class Bullet : MonoBehaviour
             if (pawn.team != ownerTeam)
             {
                 pawn.TakeDamage(damage);
+
+                
                 if (CameraJuiceManager.Instance != null) CameraJuiceManager.Instance.ShakeOnHit();
                 if (hitParticlePrefab != null)
                 {
