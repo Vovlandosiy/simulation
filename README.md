@@ -20,7 +20,7 @@ A high-impact 2D physical battle simulation tool developed with Unity 6. The pro
 ### Installation
 1.  Clone this repository to your local machine:
     ```bash
-    git clone https://github.com
+    git clone https://github.com/Vovlandosiy/simulation
     ```
 2.  Open **Unity Hub**, click **Add** -> **Add project from disk**, and select the project folder.
 3.  Ensure the editor version is set to Unity 6 and open the project.
