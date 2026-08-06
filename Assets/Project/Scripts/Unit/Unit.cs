@@ -23,14 +23,20 @@ public class Unit : MonoBehaviour
     private int currentHealth;
     private float speed;
     private Rigidbody2D rb;
+    private CircleCollider2D circleCollider;
     private Vector2 moveDirection;
 
     private WeaponData currentWeapon;
     private int currentAmmo;
 
+    private const float WallPushOffset = 0.05f;
+    private const float UnitSeparationOffset = 0.02f;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        circleCollider = GetComponent<CircleCollider2D>();
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
     }
 
     void Start()
@@ -94,7 +100,8 @@ public class Unit : MonoBehaviour
             return; 
         }
 
-        rb.linearVelocity = moveDirection * speed;
+        rb.linearVelocity = Vector2.zero;
+        rb.MovePosition(rb.position + moveDirection * speed * Time.fixedDeltaTime);
     }
 
 
@@ -188,42 +195,54 @@ public class Unit : MonoBehaviour
     {
         if (isRecoiling) return;
 
-        Vector2 normal = collision.contacts[0].normal;
-        Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
-
-        float randomAngle = Random.Range(-0f, 0f);
-        Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
-        
-        moveDirection = (rotation * reflectDirection).normalized;
-
-        float pushOffset = 0.05f; 
-        rb.position += moveDirection * pushOffset;
-
-        // Если это стена, сразу же принудительно обновляем скорость в Rigidbody,
-        // не дожидаясь следующего кадра FixedUpdate
-        rb.linearVelocity = moveDirection * speed;
-        // ------------------------------------
+        if (collision.gameObject.TryGetComponent<Unit>(out Unit otherUnit))
+        {
+            HandleUnitCollision(otherUnit);
+            return;
+        }
 
         if (collision.gameObject.CompareTag("walls"))
         {
-            _hitWall.pitch = Random.Range(0.8f, 1.2f);
-            if (_hitWall != null) _hitWall.PlayOneShot(_hitWall.clip);
+            HandleWallCollision(collision);
         }
+    }
 
-        if (collision.gameObject.CompareTag("unit"))
-        {
-            _punchUnit.pitch = Random.Range(0.8f, 1.2f);
-            if (_punchUnit != null) _punchUnit.PlayOneShot(_punchUnit.clip);
-        }
+    private void HandleWallCollision(Collision2D collision)
+    {
+        Vector2 normal = collision.contacts[0].normal;
+        moveDirection = Vector2.Reflect(moveDirection, normal).normalized;
 
-        if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
-        {
-            if (otherPawn.team != this.team)
-            {
-                //otherPawn.TakeDamage(unitData.damage);
-                Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
-            }
-        }
+        rb.position += moveDirection * WallPushOffset;
+        rb.linearVelocity = Vector2.zero;
+
+        _hitWall.pitch = Random.Range(0.8f, 1.2f);
+        if (_hitWall != null) _hitWall.PlayOneShot(_hitWall.clip);
+    }
+
+    private void HandleUnitCollision(Unit otherUnit)
+    {
+        // Нормаль от центра другого юнита к своему — стабильнее contact.normal для circle-circle
+        Vector2 separation = rb.position - otherUnit.rb.position;
+        if (separation.sqrMagnitude < 0.0001f)
+            separation = -moveDirection;
+
+        Vector2 normal = separation.normalized;
+
+        // Отражаем только если летим навстречу другому юниту
+        if (Vector2.Dot(moveDirection, normal) < 0f)
+            moveDirection = Vector2.Reflect(moveDirection, normal).normalized;
+
+        rb.position += normal * UnitSeparationOffset;
+        rb.linearVelocity = Vector2.zero;
+
+        if (GetInstanceID() > otherUnit.GetInstanceID())
+            return;
+
+        _punchUnit.pitch = Random.Range(0.8f, 1.2f);
+        if (_punchUnit != null) _punchUnit.PlayOneShot(_punchUnit.clip);
+
+        if (otherUnit.team != team)
+            Debug.Log($"{gameObject.name} ударил {otherUnit.gameObject.name} в ближнем бою!");
     }
 
 
