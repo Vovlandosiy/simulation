@@ -2,6 +2,12 @@ using UnityEngine;
 
 public class Unit : MonoBehaviour
 {
+    [Header("Juice settings")]
+    [SerializeField] private Transform spriteTransform;
+    [SerializeField] private float squashAmount = 0.4f;
+    [SerializeField] private float restoreSpeed = 10f;
+    private Vector3 originalSpriteScale = Vector3.one;
+
     [Header("Weapon Settings")] 
     [SerializeField] private Transform weaponPivot;        
     [SerializeField] private SpriteRenderer weaponVisual;
@@ -28,7 +34,6 @@ public class Unit : MonoBehaviour
 
     private WeaponData currentWeapon;
     private int currentAmmo;
-
     private const float WallPushOffset = 0.05f;
     private const float UnitSeparationOffset = 0.02f;
 
@@ -41,6 +46,9 @@ public class Unit : MonoBehaviour
 
     void Start()
     {
+        if (spriteTransform == null) spriteTransform = transform; 
+        originalSpriteScale = spriteTransform.localScale;
+
         if (unitData != null)
         {
             currentHealth = unitData.health;
@@ -100,8 +108,9 @@ public class Unit : MonoBehaviour
             return; 
         }
 
-        rb.linearVelocity = Vector2.zero;
-        rb.MovePosition(rb.position + moveDirection * speed * Time.fixedDeltaTime);
+        rb.linearVelocity = moveDirection * speed;
+
+        spriteTransform.localScale = Vector3.Lerp(spriteTransform.localScale, originalSpriteScale, restoreSpeed * Time.fixedDeltaTime);
     }
 
 
@@ -128,7 +137,7 @@ public class Unit : MonoBehaviour
         aimTimer = currentWeapon.aimDuration;
 
         _pickup.pitch = Random.Range(0.8f, 1.2f);
-        if (_pickup != null) _pickup.Play();
+        if (_pickup != null) _pickup.PlayOneShot(_pickup.clip);
         
         Debug.Log($"{gameObject.name} подобрал {newWeapon.weaponName} и целится на ходу!");
         return true;
@@ -192,58 +201,42 @@ public class Unit : MonoBehaviour
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (isRecoiling) return;
-
-        if (collision.gameObject.TryGetComponent<Unit>(out Unit otherUnit))
-        {
-            HandleUnitCollision(otherUnit);
-            return;
-        }
-
-        if (collision.gameObject.CompareTag("walls"))
-        {
-            HandleWallCollision(collision);
-        }
-    }
-
-    private void HandleWallCollision(Collision2D collision)
+{
+    if (!isRecoiling)
     {
         Vector2 normal = collision.contacts[0].normal;
-        moveDirection = Vector2.Reflect(moveDirection, normal).normalized;
+        Vector2 reflectDirection = Vector2.Reflect(moveDirection, normal);
 
-        rb.position += moveDirection * WallPushOffset;
-        rb.linearVelocity = Vector2.zero;
+        float randomAngle = Random.Range(-10f, 10f);
+        Quaternion rotation = Quaternion.Euler(0, 0, randomAngle);
+        
+        moveDirection = (rotation * reflectDirection).normalized;
 
-        _hitWall.pitch = Random.Range(0.8f, 1.2f);
-        if (_hitWall != null) _hitWall.PlayOneShot(_hitWall.clip);
+        // ЭФФЕКТ СЖАТИЯ (Squash): Вычисляем, с какой стороны был удар, и сжимаем спрайт
+        // normal.x указывает на удар слева/справа, normal.y — сверху/снизу
+        float squashX = originalSpriteScale.x * (1f - Mathf.Abs(normal.x) * squashAmount);
+        float squashY = originalSpriteScale.y * (1f - Mathf.Abs(normal.y) * squashAmount);
+        
+        // В момент удара мгновенно сплющиваем спрайт
+        spriteTransform.localScale = new Vector3(squashX, squashY, originalSpriteScale.z);
+
+        //Проигрываем звук
+        if (_hitWall != null)
+        {
+            _hitWall.pitch = Random.Range(0.8f, 1.2f);
+            _hitWall.PlayOneShot(_hitWall.clip);
+        }
     }
 
-    private void HandleUnitCollision(Unit otherUnit)
-    {
-        // Нормаль от центра другого юнита к своему — стабильнее contact.normal для circle-circle
-        Vector2 separation = rb.position - otherUnit.rb.position;
-        if (separation.sqrMagnitude < 0.0001f)
-            separation = -moveDirection;
-
-        Vector2 normal = separation.normalized;
-
-        // Отражаем только если летим навстречу другому юниту
-        if (Vector2.Dot(moveDirection, normal) < 0f)
-            moveDirection = Vector2.Reflect(moveDirection, normal).normalized;
-
-        rb.position += normal * UnitSeparationOffset;
-        rb.linearVelocity = Vector2.zero;
-
-        if (GetInstanceID() > otherUnit.GetInstanceID())
-            return;
-
-        _punchUnit.pitch = Random.Range(0.8f, 1.2f);
-        if (_punchUnit != null) _punchUnit.PlayOneShot(_punchUnit.clip);
-
-        if (otherUnit.team != team)
-            Debug.Log($"{gameObject.name} ударил {otherUnit.gameObject.name} в ближнем бою!");
-    }
+   // if (collision.gameObject.TryGetComponent<Unit>(out Unit otherPawn))
+   // {
+    //    if (otherPawn.team != this.team)
+     //   {
+    //        otherPawn.TakeDamage(unitData.damage);
+    //        Debug.Log($"{gameObject.name} ударил {otherPawn.gameObject.name} в ближнем бою!");
+   //     }
+   // }
+}
 
 
 

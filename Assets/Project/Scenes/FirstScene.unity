@@ -1199,6 +1199,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: PawnUnit (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 1256282480930592228, guid: 2ba555ab02fb83b41a43c016847dd235, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1256282480930592228, guid: 2ba555ab02fb83b41a43c016847dd235, type: 3}
+      propertyPath: m_Color.r
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1305942181737111006, guid: 2ba555ab02fb83b41a43c016847dd235, type: 3}
       propertyPath: team
       value: 2
