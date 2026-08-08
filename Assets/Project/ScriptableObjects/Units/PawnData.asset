@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::UnitData
   unitName: Pawn
   maxHealth: 10
-  health: 100
+  health: 10
   movementSpeed: 5
   damage: 0
   attackRange: 1
